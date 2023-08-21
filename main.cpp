@@ -1,13 +1,14 @@
-#pragma ide diagnostic ignored "EndlessLoop"
 #include <iostream>
-#include <thread>
-#include <vector>
 #include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #include <windows.h>
-#include <opencv2/core/utils/logger.hpp>
+#include <chrono>
+#include <stdio.h>
 
-void clearscreen()
-{
+using namespace std;
+using namespace cv;
+
+void clearscreen() {
     HANDLE hOut;
     COORD Position;
 
@@ -18,104 +19,78 @@ void clearscreen()
     SetConsoleCursorPosition(hOut, Position);
 }
 
-void clearBox()
-{
-    HANDLE hOut;
-    COORD Position;
-    DWORD Written;
+int main(int argc, char** argv) {
+    string videoPath;
+    int asciiWidth = 128;
+    int asciiHeight = 64;
 
-    hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (argc <= 1) {
+        cout << "Enter the path of the video: ";
+        cin >> videoPath;
+        cout << "Enter the width for ASCII art: ";
+        cin >> asciiWidth;
+        cout << "Enter the height for ASCII art: ";
+        cin >> asciiHeight;
+    } else {
+        for (int i = 1; i < argc; ++i) {
+            string arg = argv[i];
 
-    Position.X = 0;
-    Position.Y = 10;
-    FillConsoleOutputCharacter(hOut,' ', 1000000, Position, &Written);
-
-    SetConsoleCursorPosition(hOut, Position);
-}
-
-
-void processFrame(const cv::Mat& frame, int frameNumber, int totalFrames, std::vector<std::string>& asciiFrames) {
-
-    cv::Mat resizedFrame;
-    cv::resize(frame, resizedFrame, cv::Size(100, 75));
-
-    std::string asciiFrame;
-    for (int y = 0; y < resizedFrame.rows; ++y) {
-        for (int x = 0; x < resizedFrame.cols; ++x) {
-            const cv::Vec3b& pixel = resizedFrame.at<cv::Vec3b>(y, x);
-            int intensity = (pixel[0] + pixel[1] + pixel[2]) / 3;
-            char asciiChar = "@%#*+=-:. "[intensity / 25];
-            asciiFrame += asciiChar;
+            if (arg == "-w" && i + 1 < argc) {
+                asciiWidth = atoi(argv[i + 1]);
+                ++i;
+            } else if (arg == "-h" && i + 1 < argc) {
+                asciiHeight = atoi(argv[i + 1]);
+                ++i;
+            } else {
+                videoPath = arg;
+            }
         }
-        asciiFrame += '\n';
     }
 
-    asciiFrames[frameNumber] = asciiFrame;
-
-    std::cout << "Frame: " << frameNumber + 1 << "/" << totalFrames << std::endl;
-}
-
-int main() {
-
-    for( int n = 0; n < 50 ; n++ )
-    {
-        std::cout<<"_";
-    }
-    std::cout<<"\n";
-
-    std::string videoPath;
-    std::cout << "Enter the path of the video: ";
-    std::cin >> videoPath;
-
-
-    cv::VideoCapture capture(videoPath);
-    if (!capture.isOpened()) {
-        std::cerr << "Error opening the video file." << std::endl;
-        return 1;
+    if (videoPath.empty()) {
+        cerr << "Error: Video path not provided." << endl;
+        return -1;
     }
 
-
-    int totalFrames = capture.get(cv::CAP_PROP_FRAME_COUNT);
-    std::cout << "Total frames in the video: " << totalFrames << std::endl;
-
-
-    std::vector<std::string> asciiFrames(totalFrames);
-    std::vector<std::thread> threads;
-
-    for (int frameNumber = 0; frameNumber < totalFrames; ++frameNumber) {
-        cv::Mat frame;
-        capture >> frame;
-
-        threads.emplace_back(processFrame, frame, frameNumber, totalFrames, std::ref(asciiFrames));
+    VideoCapture cap(videoPath);
+    if (!cap.isOpened()) {
+        cerr << "Error: Could not open the video." << endl;
+        return -1;
     }
 
-    for (auto& thread : threads) {
-        thread.join();
-    }
+    double frameRate = cap.get(CAP_PROP_FPS);
+    double frameTime = 1000.0 / frameRate;
+    std::chrono::milliseconds frameTimeMs(static_cast<int>(frameTime - 4.3));
 
-    clearBox();
+    const string asciiChars = " .':-=+*#%@";
 
-    for (const std::string& asciiFrame : asciiFrames) {
+    Mat frame;
+
+    while (cap.read(frame)) {
+        auto start = std::chrono::high_resolution_clock::now();
+
+        Mat resizedGrayFrame;
+        cvtColor(frame, resizedGrayFrame, COLOR_BGR2GRAY);
+        resize(resizedGrayFrame, resizedGrayFrame, Size(asciiWidth, asciiHeight));
+
+        string asciiFrame;
+        for (int i = 0; i < resizedGrayFrame.rows; i++) {
+            for (int j = 0; j < resizedGrayFrame.cols; j++) {
+                uchar pixelValue = resizedGrayFrame.at<uchar>(i, j);
+                int index = static_cast<int>(pixelValue * (asciiChars.size() - 1) / 255.0);
+                asciiFrame += asciiChars[index];
+            }
+            asciiFrame += '\n';
+        }
 
         clearscreen();
+        cout << asciiFrame << flush;
 
-        std::cout << asciiFrame;
-
-        int frameRate = static_cast<int>(capture.get(cv::CAP_PROP_FPS));
-        std::chrono::milliseconds sleepDuration(1000 / frameRate);
-        std::this_thread::sleep_for(sleepDuration);
-
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration = end - start;
+        std::this_thread::sleep_for(frameTimeMs - (duration));
     }
 
-    capture.release();
+    cap.release();
     return 0;
 }
-
-
-
-
-
-
-
-
-
