@@ -1,3 +1,3 @@
 # ascii_video_player
 
-made in c++ wiht opencv
+made in c++ with opencv
