@@ -82,8 +82,6 @@ int main() {
     std::cout << "Total frames in the video: " << totalFrames << std::endl;
 
 
-
-
     std::vector<std::string> asciiFrames(totalFrames);
     std::vector<std::thread> threads;
 
