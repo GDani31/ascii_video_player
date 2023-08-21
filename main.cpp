@@ -68,14 +68,11 @@ int main() {
     std::cin >> videoPath;
 
 
-
-
     cv::VideoCapture capture(videoPath);
     if (!capture.isOpened()) {
         std::cerr << "Error opening the video file." << std::endl;
         return 1;
     }
-
 
 
     int totalFrames = capture.get(cv::CAP_PROP_FRAME_COUNT);
