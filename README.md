@@ -14,7 +14,7 @@ You can also click on the .exe file and it will guide you with a small dialog as
 
 ## Dependencies
 
-After setting up OpenCV in your Environment-Path you can compile it wiht no problems.
+After setting up OpenCV in your Environment-Path you can compile it with no problems.
 
 When you want to share your .exe file, you need to also make sure that the users have opencv_worldXXX.dll (where XXX means the OpenCV Version, mine was opencv_worl470) and the opencv_videoio_ffmpegXXX_64.dll.
 
